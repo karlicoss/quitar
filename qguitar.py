@@ -1,62 +1,82 @@
 #!/usr/bin/env python3
 from sympy import symbols # type: ignore
-from sympy import Piecewise, log, ITE, piecewise_fold, integrate, sin, cos, pi
-# from sympy.abc import x, y # type: ignore
-import numpy as np
+from sympy import Piecewise
+from sympy import integrate
+from sympy import lambdify
+from sympy import sin, cos, pi
 
-# f = x**2
-# g = log(x)
-# p = Piecewise((0, x < -1), (f, x <= 1), (g, True))
+import numpy as np # type: ignore
+
+import matplotlib.pyplot as plt # type: ignore
+import matplotlib.animation as animation # type: ignore
+from matplotlib.animation import FuncAnimation # type: ignore
+
+def clrange(a, b):
+    return range(a, b + 1)
+
+
 x, t = symbols('x t', real=True)
 
-q = symbols('q', real=True)
+L = 1 # string length
 
-L = 1
-
-AA = 1
+AA = 1 # max amplitude
 f = Piecewise(
     (0    , x < 0),
 
-    # (x    , x <= L/4),
-    # (L/4-x, x <= L/2),
-    (sin(pi / (L / 8) * x), x <= L/8),
-    # (sin(pi / L * x), x <= L),
+    # TODO huh? triangle is suspiciously stable
+    # (x    , x <= L/2),
+    # (L-x, x <= L),
 
+    # (sin(pi / (L / 8) * x), x <= L/8),
+    (sin(pi / L * x), x <= L),
     (0    , True),
 )
+# TODO specify initial time derivative?
 
-# print(f.subs(0))
-# print(f.subs(x, 1))
+assert f.subs(x, 0) == 0, "BC on the left is violated!"
+assert f.subs(x, L) == 0, "BC on the right is violated!"
 
-def fA(n):
-    return 2 * integrate(f * sin(pi * n * x), (x, 0, L))
+# https://ocw.mit.edu/courses/mathematics/18-303-linear-partial-differential-equations-fall-2006/lecture-notes/waveeqni.pdf
+N = 10 # fourier modes
+Ns = clrange(1, N)
+A = [
+    2 * integrate(f * sin(pi * n * x), (x, 0, L))
+    for n in Ns
+]
+B = [
+    0
+    for n in Ns
+]
 
-def fB(n):
-    return 0.0
 
-N = 10
-Ns = range(1, N + 1)
-A = [fA(n) for n in Ns]
-B = [fB(n) for n in Ns]
+# TODO huh, funny enough, would be nicer if it didn't have indexing operator so we wouldn't try to index with 1-based mode number
+# normal modes of vibration
+C = [
+    a * cos(pi * n * t) + b * sin(pi * n * t)
+    for n, a, b in zip(Ns, A, B)
+]
+C_np = [
+    lambdify(t, c, "numpy")
+    for c in C
+]
+
 # TODO test with phone?...
 
-# print(a)
-
-# TODO shit, that can be analytical right?...
+# TODO might need faster base frequency? Or just speed up time, should be same right?
 
 # TODO ok, fund. frequency is implicitly 1 here (the small w)
+u = sum([
+    c * sin(pi * n * x)
+    for c, n in zip(C, Ns)
+])
+u_np = lambdify([t, x], u, "numpy")
 
-C = [a * cos(pi * n * t) + b * sin(pi * n * t) for n, a, b in zip(Ns, A, B)]
-from sympy import lambdify
-CC = [lambdify(t, c, "numpy") for c in C]
 
-u = sum([c * sin(pi * n * x) for c, n in zip(C, Ns)])
+Tmax = 100
+time_steps = 1000
 
-u_fast = lambdify([t, x], u, "numpy")
 
-Tmax = 10
-steps = 100
-points = 100
+points = 500
 
 
 def music():
@@ -97,37 +117,20 @@ def music():
 # basically, c[n](t) is the amplitude of nth fund frequency at time t
 
 def do_plots():
-    import numpy as np
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-
     # TODO multiple threads?..
-    ims = []
-    # TODO ugh
-   #  for tt in np.arange(0.0, Tmax, Tmax/steps):
-   #      print(f'processing {tt}')
-
-   #      xs = np.linspace(0.0, L, points)
-   #      us = [ut.subs(x, xx) for xx in xs]
-   #      # print(tt)
-   #      pp = plt.plot(xs, us, title=f'{tt}')
-   #      ims.append(pp)
-        # TODO wonder if we can do it in realtime??
-        # calc the fourier coeff; play sound
-        # ims.append((plt.pcolor(x, y, base + add, norm=plt.Normalize(0, 30)),))
+    # TODO wonder if we can do it in realtime??
+    # calc the fourier coeff; play sound
+    # ims.append((plt.pcolor(x, y, base + add, norm=plt.Normalize(0, 30)),))
 
     # im_ani = animation.ArtistAnimation(fig, ims, interval=200, blit=True) # , repeat_delay=3000, blit=True)
     # To save this second animation with some metadata, use the following command:
     # im_ani.save('im.mp4', metadata={'artist':'Guido'})
 
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from matplotlib.animation import FuncAnimation
-
     fig, ax = plt.subplots()
     xdata, ydata = [], []
-    ln, = plt.plot([], [], 'r.', animated=True)
-    time_template = 'time = %.1fs'
+    ln, = plt.plot([], [], '.', animated=True)
+    cfmt = '{:.3f}'
+    time_template = 'time = {:.1f}s, C = {}'
     time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
     def init():
         ax.set_xlim(0-0.1, L + 0.1)
@@ -135,23 +138,27 @@ def do_plots():
         return ln,
 
     def update(tt):
-        # TODO pythonlise?..
-        # TODO need to erase first?..
         xs = np.linspace(0.0, L, points)
-        ys = u_fast(tt, xs)
+        ys = u_np(tt, xs)
 
         ax.set_title(f'hi {tt}')
         ln.set_data(xs, ys)
-        time_text.set_text(time_template % (tt))
+
+
+        cs = [cfmt.format(c_np(tt)) for c_np in C_np]
+        # TODO but, what we are actually interested at is
+
+        txt = time_template.format(tt, cs)
+        time_text.set_text(txt)
         return ln, time_text
 
-    ani = FuncAnimation(fig, update, frames=np.linspace(0, Tmax, steps), init_func=init, blit=True, interval=100)
+    ani = FuncAnimation(fig, update, frames=np.linspace(0, Tmax, time_steps), init_func=init, blit=True, interval=100)
 
     # Set up formatting for the movie files
     Writer = animation.writers['ffmpeg']
     writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-    ani.save('im.mp4', writer=writer)
-    # plt.show()
+    # ani.save('im.mp4', writer=writer)
+    plt.show()
 
 
 # music()
