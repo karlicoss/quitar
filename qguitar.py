@@ -28,7 +28,7 @@ f = Piecewise(
     # (L-x, x <= L),
 
     # (sin(pi / (L / 8) * x), x <= L/8),
-    (sin(pi / L * x), x <= L),
+    (sin(pi / (L / 2) * x), x <= L / 2),
     (0    , True),
 )
 # TODO specify initial time derivative?
@@ -37,7 +37,7 @@ assert f.subs(x, 0) == 0, "BC on the left is violated!"
 assert f.subs(x, L) == 0, "BC on the right is violated!"
 
 # https://ocw.mit.edu/courses/mathematics/18-303-linear-partial-differential-equations-fall-2006/lecture-notes/waveeqni.pdf
-N = 10 # fourier modes
+N = 5 # fourier modes
 Ns = clrange(1, N)
 A = [
     2 * integrate(f * sin(pi * n * x), (x, 0, L))
@@ -48,6 +48,9 @@ B = [
     for n in Ns
 ]
 
+A_num = [a.evalf() for a in A]
+print(A_num)
+# ok, it's actually these coefficients that we wanna feed into sound modulation
 
 # TODO huh, funny enough, would be nicer if it didn't have indexing operator so we wouldn't try to index with 1-based mode number
 # normal modes of vibration
@@ -126,7 +129,7 @@ def do_plots():
     # To save this second animation with some metadata, use the following command:
     # im_ani.save('im.mp4', metadata={'artist':'Guido'})
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(20, 5))
     xdata, ydata = [], []
     ln, = plt.plot([], [], '.', animated=True)
     cfmt = '{:.3f}'
@@ -144,6 +147,8 @@ def do_plots():
         ax.set_title(f'hi {tt}')
         ln.set_data(xs, ys)
 
+        # TODO hmm... I don't have to do any time simulations whatsoever??
+        # the modes will always be there just by the nature of initial conditions..
 
         cs = [cfmt.format(c_np(tt)) for c_np in C_np]
         # TODO but, what we are actually interested at is
