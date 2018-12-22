@@ -20,15 +20,20 @@ x, t = symbols('x t', real=True)
 L = 1 # string length
 
 AA = 1 # max amplitude
+# TODO ok, maybe try tunneling first?..
 f = Piecewise(
     (0    , x < 0),
 
     # TODO huh? triangle is suspiciously stable
     # (x    , x <= L/2),
-    # (L-x, x <= L),
+    # (L-x  , x <= L),
 
-    # (sin(pi / L * x), x <= L2),
-    # (sin(pi / (L / 8) * x), x <= L/8),
+    (x    , x <= L/4),
+    (L/2-x  , x <= L/2),
+
+    # (sin(pi / (L / 2) * x)        , x <= L / 2),
+    # (sin(pi / (L / 2) * (x - L/2)), x <= L),
+    # (sin(pi / (L / 3) * x), x <= L / 3),
     # (sin(pi / (L / 2) * x), x <= L / 2),
     # (sin(pi / (L / 2) * (x - L/2)), x <= L),
     (0    , True),
@@ -84,17 +89,21 @@ time_steps = 1000
 points = 500
 
 
+# https://borismus.github.io/spectrogram/
+# pretty good for validation!
+# TODO sampling back to get fourier coefficients from quantum thing is gonna be tricky..
 def music():
-    print(C0_num)
+    F = 440 # base frequency, for the fundamental mode
+    for c, n in zip(C0_num, Ns):
+        print(f"{n * F:<5}: {c:.2f}")
 
     M = 126 # max allowed molume (maxbyte / 2)
     mvol = M / len(C0_num) # max allowed volume for each normal mode
 
-    seconds = 2
+    seconds = 5
     Fs = 11025 # 44100
     samples = Fs * seconds
 
-    F = 660 # base frequency, for the fundamental mode
     w = 2 * np.pi / Fs
 
     wav = []
@@ -122,7 +131,6 @@ def music():
         '-r' + str(Fs),
         'test.wav',
        ]
-    print(' '.join(cmd))
     while True:
         subprocess.run(cmd)
 # basically, c[n](t) is the amplitude of nth fund frequency at time t
