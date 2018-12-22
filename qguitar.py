@@ -19,8 +19,8 @@ f = Piecewise(
 
     # (x    , x <= L/4),
     # (L/4-x, x <= L/2),
-    # (sin(pi / (L / 2) * x), x <= L/2),
-    (sin(pi / L * x), x <= L),
+    (sin(pi / (L / 8) * x), x <= L/8),
+    # (sin(pi / L * x), x <= L),
 
     (0    , True),
 )
@@ -34,7 +34,7 @@ def fA(n):
 def fB(n):
     return 0.0
 
-N = 1
+N = 10
 Ns = range(1, N + 1)
 A = [fA(n) for n in Ns]
 B = [fB(n) for n in Ns]
@@ -54,9 +54,9 @@ u = sum([c * sin(pi * n * x) for c, n in zip(C, Ns)])
 
 u_fast = lambdify([t, x], u, "numpy")
 
-Tmax = 6
+Tmax = 10
 steps = 100
-points = 50
+points = 100
 
 
 def music():
@@ -146,7 +146,12 @@ def do_plots():
         return ln, time_text
 
     ani = FuncAnimation(fig, update, frames=np.linspace(0, Tmax, steps), init_func=init, blit=True, interval=100)
-    plt.show()
+
+    # Set up formatting for the movie files
+    Writer = animation.writers['ffmpeg']
+    writer = Writer(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+    ani.save('im.mp4', writer=writer)
+    # plt.show()
 
 
 # music()
