@@ -27,8 +27,10 @@ f = Piecewise(
     # (x    , x <= L/2),
     # (L-x, x <= L),
 
+    # (sin(pi / L * x), x <= L2),
     # (sin(pi / (L / 8) * x), x <= L/8),
-    (sin(pi / (L / 2) * x), x <= L / 2),
+    # (sin(pi / (L / 2) * x), x <= L / 2),
+    # (sin(pi / (L / 2) * (x - L/2)), x <= L),
     (0    , True),
 )
 # TODO specify initial time derivative?
@@ -48,10 +50,6 @@ B = [
     for n in Ns
 ]
 
-A_num = [a.evalf() for a in A]
-print(A_num)
-# ok, it's actually these coefficients that we wanna feed into sound modulation
-
 # TODO huh, funny enough, would be nicer if it didn't have indexing operator so we wouldn't try to index with 1-based mode number
 # normal modes of vibration
 C = [
@@ -62,6 +60,10 @@ C_np = [
     lambdify(t, c, "numpy")
     for c in C
 ]
+
+C0_num = [c(0.0) for c in C_np]
+
+# ok, it's actually these coefficients that we wanna feed into sound modulation
 
 # TODO test with phone?...
 
@@ -83,25 +85,28 @@ points = 500
 
 
 def music():
-    M = 126
-    mvol = M / len(CC)
+    print(C0_num)
 
-    seconds = 5
-    Fs = 44100
+    M = 126 # max allowed molume (maxbyte / 2)
+    mvol = M / len(C0_num) # max allowed volume for each normal mode
+
+    seconds = 2
+    Fs = 11025 # 44100
     samples = Fs * seconds
 
-
+    F = 660 # base frequency, for the fundamental mode
     w = 2 * np.pi / Fs
 
     wav = []
 
-    F = 440
     for s in range(samples):
         if s % 1000 == 0:
             print(s)
-        # TODO shit. too slow?
         tt = s / Fs
-        wv = mvol * np.sum([c(tt) * np.sin(s * w * n * F) for n, c in zip(Ns, CC)])
+        wv = mvol * np.sum([
+            c * np.sin(s * w * n * F)
+            for n, c in zip(Ns, C0_num)
+        ])
         wav.append(wv)
 
     import struct
@@ -111,12 +116,15 @@ def music():
             fo.write(struct.pack('B', i))
 
     import subprocess
-    subprocess.run([
+    cmd = [
         'aplay',
         '-f', 'U8',
         '-r' + str(Fs),
         'test.wav',
-       ])
+       ]
+    print(' '.join(cmd))
+    while True:
+        subprocess.run(cmd)
 # basically, c[n](t) is the amplitude of nth fund frequency at time t
 
 def do_plots():
@@ -166,5 +174,5 @@ def do_plots():
     plt.show()
 
 
-# music()
-do_plots()
+music()
+# do_plots()
