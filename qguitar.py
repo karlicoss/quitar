@@ -28,12 +28,12 @@ f = Piecewise(
     # (x    , x <= L/2),
     # (L-x  , x <= L),
 
-    (x    , x <= L/4),
-    (L/2-x  , x <= L/2),
+    # (x    , x <= L/4),
+    # (L/2-x  , x <= L/2),
 
-    # (sin(pi / (L / 2) * x)        , x <= L / 2),
+    # (sin(pi / (L) * x)        , x <= L),
     # (sin(pi / (L / 2) * (x - L/2)), x <= L),
-    # (sin(pi / (L / 3) * x), x <= L / 3),
+    (sin(pi / (L / 3) * x), x <= L / 3),
     # (sin(pi / (L / 2) * x), x <= L / 2),
     # (sin(pi / (L / 2) * (x - L/2)), x <= L),
     (0    , True),
@@ -55,16 +55,24 @@ B = [
     for n in Ns
 ]
 
+# TODO right, so stuff comping from schrodinger equation basically going to inflate frequency (instead of 2 * freq, 2^2 * freq)
+
+
+
 # TODO huh, funny enough, would be nicer if it didn't have indexing operator so we wouldn't try to index with 1-based mode number
 # normal modes of vibration
 C = [
-    a * cos(pi * n * t) + b * sin(pi * n * t)
+    # exp(i (-Et)) = cos (-Et ) + i sin(Et)
+    a * cos(pi * n * t) # + b * sin(pi * n * t)
+    # a * cos(- n ** 2 * t)
     for n, a, b in zip(Ns, A, B)
 ]
 C_np = [
     lambdify(t, c, "numpy")
     for c in C
 ]
+
+# hmmm... so real and imag parts are evolving as normal waves? a bit boring...
 
 C0_num = [c(0.0) for c in C_np]
 
@@ -82,7 +90,7 @@ u = sum([
 u_np = lambdify([t, x], u, "numpy")
 
 
-Tmax = 100
+Tmax = 10
 time_steps = 1000
 
 
@@ -135,6 +143,7 @@ def music():
         subprocess.run(cmd)
 # basically, c[n](t) is the amplitude of nth fund frequency at time t
 
+# TODO split into wave equation bit and schrodinger?..
 def do_plots():
     # TODO multiple threads?..
     # TODO wonder if we can do it in realtime??
@@ -182,5 +191,8 @@ def do_plots():
     plt.show()
 
 
-music()
-# do_plots()
+# music()
+do_plots()
+
+
+# TODO hmm... unclear how to interpret non-zero complex amplitude inside the barrier?
